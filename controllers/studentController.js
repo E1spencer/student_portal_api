@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Student from "../models/Student.js";
+import Course from "../models/Course.js";
 
 // CREATE STUDENT (POST)
 export const createStudent = async (req, res) => {
@@ -42,7 +43,7 @@ export const getStudent = async (req, res) => {
       });
     }
 
-    const student = await Student.findById(id);
+    const student = await Student.findById(id).populate("courses");
 
     if (!student) {
       return res.status(404).json({
@@ -114,6 +115,59 @@ export const updateStudent = async (req, res) => {
   }
 };
 
+
+// ADD COURSE TO STUDENT (PATCH)
+export const addCourseToStudent = async (req, res) => {
+  try {
+    const { studentId, courseId } = req.params;
+
+    if (
+      !mongoose.Types.ObjectId.isValid(studentId) ||
+      !mongoose.Types.ObjectId.isValid(courseId)
+    ) {
+      return res.status(400).json({
+        message: "Invalid student ID or course ID"
+      });
+    }
+
+    const student = await Student.findById(studentId);
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found"
+      });
+    }
+
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({
+        message: "Course not found"
+      });
+    }
+
+    if (student.courses.includes(courseId)) {
+      return res.status(400).json({
+        message: "Student is already enrolled in this course"
+      });
+    }
+
+    student.courses.push(courseId);
+
+    await student.save();
+
+    res.status(200).json({
+      message: "Course added to student successfully",
+      student
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to add course to student",
+      error: error.message
+    });
+  }
+};
 
 // DELETE STUDENT (DELETE)
 export const deleteStudent = async (req, res) => {

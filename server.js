@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 
 import connectDatabase from "./config/database.js";
 import studentRoutes from "./routes/studentRoutes.js";
+import courseRoutes from "./routes/courseRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -21,6 +22,9 @@ app.get("/", (req, res) => {
 
 // Student routes
 app.use("/api/students", studentRoutes);
+
+// Course routes
+app.use("/api/courses", courseRoutes);
 
 // Connect to MongoDB, then start server
 connectDatabase().then(() => {

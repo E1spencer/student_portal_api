@@ -16,7 +16,14 @@ const studentSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true
-  }
+  },
+
+  courses: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Course"
+    }
+  ]
 });
 
 const Student = mongoose.model("Student", studentSchema);
