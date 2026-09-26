@@ -1,50 +1,66 @@
 # Student Portal API
 
-A RESTful backend API built with **Node.js**, **Express.js**, **MongoDB Atlas**, and **Mongoose** for managing student accounts and course relationships.
+A RESTful backend API built with **Node.js**, **Express.js**, **MongoDB Atlas**, and **Mongoose** for managing students, courses, course registration, and course images.
 
-The project started as a CRUD-based Student Portal API where students can create, retrieve, update, and delete their accounts. It has since been extended to support **database relationships and referencing** by allowing students to be associated with courses.
+The project supports full CRUD operations for students and courses, student-course relationships using MongoDB references, image uploads using Multer and Cloudinary, validation, and centralized error handling.
 
 ---
 
 ## Features
 
-### Student Management
+### Student Features
 
 Students can:
 
-* Create an account
-* Retrieve their account details
-* Update their name
-* Delete their account
+- Create an account
+- Retrieve all students
+- Retrieve a single student
+- Update their name
+- Delete their account
+- Register for a course
+- Remove a registered course
+- Retrieve all courses registered by a specific student
 
-Each student account contains:
+Each student contains:
 
-* Name
-* Registration Number
-* Email Address
+- Name
+- Registration Number
+- Email Address
+- Registered Courses
 
-Students are only allowed to update their **name**. Their registration number and email address cannot be changed.
+Students are only allowed to update their **name**. Their registration number and email address remain unchanged.
 
-### Course Management
+---
 
-The API also supports:
+### Course Features
 
-* Creating courses
-* Preventing duplicate course codes
-* Assigning courses to students
+The API supports:
+
+- Create a course
+- Retrieve all available courses
+- Retrieve a single course
+- Update a course title
+- Update a course image
+- Delete a course
+- Prevent duplicate course codes
+- Upload course images
+- Store course images using Cloudinary
 
 Each course contains:
 
-* Course Code
-* Course Title
+- Course Code
+- Course Title
+- Course Image
 
-### Student-Course Relationship
+Course codes are treated as stable identifiers and cannot be updated.
 
-Students can be enrolled in multiple courses.
+---
 
-The project uses **MongoDB ObjectId references** to connect students with courses.
+## Student-Course Relationship
 
-The Student model contains a `courses` array:
+Students can register for multiple courses.
+
+The `Student` model stores course references using MongoDB ObjectIds:
 
 ```javascript
 courses: [
@@ -55,21 +71,36 @@ courses: [
 ]
 ```
 
-Each value in the array references a document in the `courses` collection.
+This creates a relationship between students and courses.
 
-Mongoose `populate()` is used when retrieving a student so that the API can return full course information instead of only course IDs.
+For example:
+
+```text
+Student
+   │
+   ├── Course ObjectId
+   ├── Course ObjectId
+   └── Course ObjectId
+          │
+          ▼
+        Course
+```
+
+Mongoose `populate()` is used when retrieving student information so that full course details can be returned instead of only ObjectIds.
 
 ---
 
 ## Technologies Used
 
-* Node.js
-* Express.js
-* MongoDB Atlas
-* Mongoose
-* dotenv
-* Nodemon
-* Postman
+- Node.js
+- Express.js
+- MongoDB Atlas
+- Mongoose
+- Multer
+- Cloudinary
+- dotenv
+- Nodemon
+- Postman
 
 ---
 
@@ -79,25 +110,90 @@ Mongoose `populate()` is used when retrieving a student so that the API can retu
 student_portal_api/
 │
 ├── config/
-│   └── database.js
+│   ├── cloudinary.js
+│   ├── database.js
+│   └── multer.js
 │
 ├── controllers/
-│   ├── studentController.js
-│   └── courseController.js
+│   ├── courseController.js
+│   └── studentController.js
 │
 ├── models/
-│   ├── Student.js
-│   └── Course.js
+│   ├── Course.js
+│   └── Student.js
 │
 ├── routes/
-│   ├── studentRoutes.js
-│   └── courseRoutes.js
+│   ├── courseRoutes.js
+│   └── studentRoutes.js
+│
+├── uploads/
 │
 ├── .env
 ├── .gitignore
 ├── package.json
 ├── package-lock.json
+├── README.md
 └── server.js
+```
+
+---
+
+## Environment Variables
+
+Create a `.env` file in the root directory.
+
+```env
+PORT=8000
+
+MONGO_URL=your_mongodb_atlas_connection_string
+
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+```
+
+Do not upload `.env` to GitHub.
+
+Your `.gitignore` should contain:
+
+```text
+node_modules/
+.env
+uploads/
+```
+
+---
+
+## Installation
+
+### 1. Clone the repository
+
+```bash
+git clone YOUR_REPOSITORY_URL
+```
+
+### 2. Enter the project directory
+
+```bash
+cd student_portal_api
+```
+
+### 3. Install dependencies
+
+```bash
+npm install
+```
+
+### 4. Start the development server
+
+```bash
+npm run dev
+```
+
+The API should run on:
+
+```text
+http://localhost:8000
 ```
 
 ---
@@ -122,24 +218,21 @@ Example request body:
 }
 ```
 
-Example successful response:
+---
 
-```json
-{
-  "message": "Student account created successfully",
-  "student": {
-    "_id": "student_id",
-    "name": "Jason Derulo",
-    "registrationNumber": "ENG124",
-    "email": "jason@gmail.com",
-    "courses": []
-  }
-}
+### Get All Students
+
+```http
+GET /api/students
 ```
+
+Returns all students in the database.
+
+Registered courses can also be populated in the response.
 
 ---
 
-### Get Student
+### Get One Student
 
 ```http
 GET /api/students/:id
@@ -151,28 +244,7 @@ Example:
 GET /api/students/6a9b3bb309619168bc79c28e
 ```
 
-The API uses Mongoose `populate()` to return full information about courses assigned to the student.
-
-Example response:
-
-```json
-{
-  "message": "Student retrieved successfully",
-  "student": {
-    "_id": "6a9b3bb309619168bc79c28e",
-    "name": "Jason Derulo",
-    "registrationNumber": "ENG124",
-    "email": "jason@gmail.com",
-    "courses": [
-      {
-        "_id": "6a9de3610a2fe920b5de0abb",
-        "courseCode": "CPE301",
-        "courseTitle": "Computer Networks"
-      }
-    ]
-  }
-}
-```
+Returns the student and their populated course information.
 
 ---
 
@@ -184,7 +256,7 @@ PATCH /api/students/:id
 
 Only the student's name can be updated.
 
-Example request:
+Example:
 
 ```json
 {
@@ -194,22 +266,6 @@ Example request:
 
 Attempts to update the email address or registration number are rejected.
 
-Example invalid request:
-
-```json
-{
-  "email": "newemail@gmail.com"
-}
-```
-
-Example response:
-
-```json
-{
-  "message": "Only the student's name can be updated"
-}
-```
-
 ---
 
 ### Delete Student
@@ -218,78 +274,37 @@ Example response:
 DELETE /api/students/:id
 ```
 
-Example successful response:
-
-```json
-{
-  "message": "Student account deleted successfully"
-}
-```
+Deletes the student account permanently.
 
 ---
 
-## Course Endpoints
-
-### Create Course
+### Get Student Courses
 
 ```http
-POST /api/courses
+GET /api/students/:id/courses
 ```
 
-Example request:
-
-```json
-{
-  "courseCode": "CPE301",
-  "courseTitle": "Computer Networks"
-}
-```
+Returns only the courses registered by a specific student.
 
 Example response:
 
 ```json
 {
-  "message": "Course created successfully",
-  "course": {
-    "_id": "course_id",
-    "courseCode": "CPE301",
-    "courseTitle": "Computer Networks"
-  }
-}
-```
-
-Course codes must be unique.
-
-If a course with the same course code already exists, the API returns a conflict response.
-
----
-
-## Enroll Student in a Course
-
-```http
-PATCH /api/students/:studentId/courses/:courseId
-```
-
-Example:
-
-```text
-PATCH /api/students/6a9b3bb309619168bc79c28e/courses/6a9de3610a2fe920b5de0abb
-```
-
-No request body is required.
-
-Example response:
-
-```json
-{
-  "message": "Course added to student successfully",
-  "student": {
-    "_id": "6a9b3bb309619168bc79c28e",
-    "name": "Jason Derulo",
-    "registrationNumber": "ENG124",
-    "email": "jason@gmail.com",
+  "success": true,
+  "message": "Student courses retrieved successfully",
+  "data": {
+    "count": 2,
     "courses": [
-      "6a9de3610a2fe920b5de0abb"
+      {
+        "_id": "course_id_1",
+        "courseCode": "CPE301",
+        "courseTitle": "Computer Networks"
+      },
+      {
+        "_id": "course_id_2",
+        "courseCode": "CPE305",
+        "courseTitle": "Database Systems"
+      }
     ]
   }
 }
@@ -297,9 +312,162 @@ Example response:
 
 ---
 
+### Add Course to Student
+
+```http
+PATCH /api/students/:studentId/courses/:courseId
+```
+
+Adds a course reference to the student's `courses` array.
+
+The API validates:
+
+- Student ID
+- Course ID
+- Student existence
+- Course existence
+- Duplicate course registration
+
+---
+
+### Remove Course from Student
+
+```http
+DELETE /api/students/:studentId/courses/:courseId
+```
+
+Removes a course reference from the student's `courses` array.
+
+---
+
+# Course Endpoints
+
+### Create Course
+
+```http
+POST /api/courses
+```
+
+The request uses:
+
+```text
+multipart/form-data
+```
+
+Fields:
+
+```text
+courseCode
+courseTitle
+image
+```
+
+Example:
+
+```text
+courseCode: CPE301
+courseTitle: Computer Networks
+image: selected image file
+```
+
+The image is first handled by Multer and then uploaded to Cloudinary.
+
+The Cloudinary image URL is stored in the course document.
+
+---
+
+### Get All Courses
+
+```http
+GET /api/courses
+```
+
+Returns all courses available for registration.
+
+---
+
+### Get One Course
+
+```http
+GET /api/courses/:id
+```
+
+Returns one course using its MongoDB ObjectId.
+
+---
+
+### Update Course
+
+```http
+PATCH /api/courses/:id
+```
+
+The following can be updated:
+
+- Course title
+- Course image
+
+The course code cannot be changed.
+
+If a new image is provided, Multer handles the local upload and the image is uploaded to Cloudinary.
+
+---
+
+### Delete Course
+
+```http
+DELETE /api/courses/:id
+```
+
+Deleting a course also removes that course reference from every student who previously registered for it.
+
+This prevents stale or broken references from remaining in student documents.
+
+---
+
+# API Route Summary
+
+## Students
+
+```text
+POST    /api/students
+
+GET     /api/students
+
+GET     /api/students/:id
+
+PATCH   /api/students/:id
+
+DELETE  /api/students/:id
+
+GET     /api/students/:id/courses
+
+PATCH   /api/students/:studentId/courses/:courseId
+
+DELETE  /api/students/:studentId/courses/:courseId
+```
+
+## Courses
+
+```text
+POST    /api/courses
+
+GET     /api/courses
+
+GET     /api/courses/:id
+
+PATCH   /api/courses/:id
+
+DELETE  /api/courses/:id
+```
+
+The project currently contains **13 API endpoints**.
+
+---
+
 # Database Design
 
-The project currently uses two MongoDB collections:
+The MongoDB database contains two main collections:
 
 ```text
 studentPortal
@@ -309,33 +477,50 @@ studentPortal
 └── courses
 ```
 
+---
+
 ## Student Schema
+
+Conceptually:
 
 ```javascript
 {
   name: String,
+
   registrationNumber: String,
+
   email: String,
-  courses: [ObjectId]
-}
-```
 
-## Course Schema
-
-```javascript
-{
-  courseCode: String,
-  courseTitle: String
+  courses: [
+    {
+      type: ObjectId,
+      ref: "Course"
+    }
+  ]
 }
 ```
 
 ---
 
-# Database Relationship
+## Course Schema
 
-The relationship between students and courses is implemented using **referencing**.
+Conceptually:
 
-A student stores course IDs:
+```javascript
+{
+  courseCode: String,
+  courseTitle: String,
+  courseImage: String
+}
+```
+
+---
+
+# Mongoose Populate
+
+Students store course IDs internally.
+
+Example:
 
 ```json
 {
@@ -346,52 +531,17 @@ A student stores course IDs:
 }
 ```
 
-The referenced course exists separately:
-
-```json
-{
-  "_id": "6a9de3610a2fe920b5de0abb",
-  "courseCode": "CPE301",
-  "courseTitle": "Computer Networks"
-}
-```
-
-The relationship can be represented as:
-
-```text
-Student
-   │
-   │ references
-   ↓
-Course
-```
-
-Because a student can take multiple courses and a course can be taken by multiple students, this represents a **many-to-many relationship** conceptually.
-
----
-
-# Mongoose Populate
-
-When retrieving a student, the API uses:
+Using:
 
 ```javascript
 Student.findById(id).populate("courses");
 ```
 
-Instead of returning:
+Mongoose can return:
 
 ```json
 {
-  "courses": [
-    "6a9de3610a2fe920b5de0abb"
-  ]
-}
-```
-
-Mongoose returns:
-
-```json
-{
+  "name": "Jason Derulo",
   "courses": [
     {
       "_id": "6a9de3610a2fe920b5de0abb",
@@ -402,87 +552,184 @@ Mongoose returns:
 }
 ```
 
-The IDs remain stored in the Student document. `populate()` only replaces the references with the corresponding documents when returning the result.
+The Student document still stores the ObjectId internally. `populate()` only changes the returned result.
 
 ---
 
-# Validation and Error Handling
+# Course Image Upload
 
-The API includes validation for:
+Course images are handled in two stages.
 
-* Missing student information
-* Invalid MongoDB ObjectIds
-* Students that do not exist
-* Courses that do not exist
-* Duplicate course codes
-* Duplicate student-course enrollment
-* Attempts to update restricted student fields
+```text
+Client
+   ↓
+Multer
+   ↓
+uploads/
+   ↓
+Cloudinary
+   ↓
+Cloudinary image URL
+   ↓
+MongoDB
+```
 
-Common HTTP status codes used include:
+Multer handles the uploaded file using:
 
-| Status Code | Meaning                        |
-| ----------- | ------------------------------ |
-| `200`       | Request successful             |
-| `201`       | Resource created successfully  |
-| `400`       | Invalid request                |
-| `404`       | Resource not found             |
-| `409`       | Duplicate/conflicting resource |
-| `500`       | Internal server error          |
+```javascript
+upload.single("image")
+```
+
+Cloudinary then uploads the image and returns a secure URL.
+
+That URL is stored as:
+
+```javascript
+courseImage
+```
+
+inside the Course document.
+
+---
+
+# Validation
+
+The API currently validates several common problems.
+
+### Student Validation
+
+- Missing name
+- Missing registration number
+- Missing email
+- Invalid MongoDB ObjectId
+- Student not found
+- Attempts to change registration number
+- Attempts to change email
+- Duplicate course registration
+- Course not registered before removal
+
+### Course Validation
+
+- Missing course code
+- Missing course title
+- Missing course image
+- Invalid course ID
+- Course not found
+- Duplicate course code
+- Attempts to update course code
+
+---
+
+# HTTP Status Codes
+
+| Status | Meaning |
+|---|---|
+| `200` | Request successful |
+| `201` | Resource created |
+| `400` | Invalid request |
+| `404` | Resource not found |
+| `409` | Resource conflict / duplicate |
+| `500` | Internal server error |
+
+---
+
+# Error Handling
+
+The API includes a 404 route handler.
+
+Example:
+
+```json
+{
+  "success": false,
+  "message": "Route GET /api/does-not-exist not found"
+}
+```
+
+A global error-handling middleware is also included to handle unexpected server errors.
 
 ---
 
 # CRUD Operations
 
-The Student API implements the four main CRUD operations:
+## Students
 
-| CRUD   | HTTP Method | Operation           |
-| ------ | ----------- | ------------------- |
-| Create | POST        | Create student      |
-| Read   | GET         | Retrieve student    |
-| Update | PATCH       | Update student name |
-| Delete | DELETE      | Delete student      |
+| CRUD | HTTP | Operation |
+|---|---|---|
+| Create | POST | Create student |
+| Read | GET | Retrieve student(s) |
+| Update | PATCH | Update student |
+| Delete | DELETE | Delete student |
+
+## Courses
+
+| CRUD | HTTP | Operation |
+|---|---|---|
+| Create | POST | Create course |
+| Read | GET | Retrieve course(s) |
+| Update | PATCH | Update course |
+| Delete | DELETE | Delete course |
 
 ---
 
-# Learning Objectives
+# Concepts Demonstrated
 
-This project demonstrates practical knowledge of:
+This project demonstrates practical use of:
 
-* REST APIs
-* Node.js
-* Express routing
-* Controllers
-* MongoDB Atlas
-* Mongoose schemas and models
-* CRUD operations
-* Environment variables
-* HTTP status codes
-* Request validation
-* Error handling
-* MongoDB ObjectIds
-* Database relationships
-* Document referencing
-* Many-to-many relationships
-* Mongoose `populate()`
+- Node.js
+- Express.js
+- REST API design
+- MongoDB Atlas
+- Mongoose
+- CRUD operations
+- Schemas and models
+- Controllers
+- Express routers
+- Request parameters
+- Request bodies
+- Middleware
+- Environment variables
+- HTTP status codes
+- Validation
+- Error handling
+- MongoDB ObjectIds
+- Database relationships
+- Document referencing
+- Mongoose `populate()`
+- Array relationships
+- MongoDB `$pull`
+- MongoDB `updateMany()`
+- Multer
+- Multipart form data
+- Cloudinary
+- File uploads
 
 ---
 
 # Future Improvements
 
-Possible improvements include:
+Possible future additions include:
 
-* Retrieve all students
-* Retrieve all courses
-* Remove a course from a student
-* Retrieve all students enrolled in a course
-* Authentication and authorization
-* Password hashing
-* JWT authentication
-* Student login
-* Course enrollment limits
-* Improved email validation
-* Custom student IDs
-* API documentation with Swagger/OpenAPI
+- Student authentication
+- Password hashing with bcrypt
+- JWT authentication
+- Authorization
+- Admin accounts
+- Course registration limits
+- Course capacity
+- Departments and faculties
+- Semester support
+- Course units
+- Student levels
+- Search and filtering
+- Pagination
+- Email validation
+- Student profile images
+- Role-based access control
+- Delete old Cloudinary images when replacing course images
+- Automatically clean temporary files from the local `uploads` directory
+- API documentation using Swagger/OpenAPI
+- Deployment
 
 ---
 
