@@ -63,6 +63,24 @@ export const getStudent = async (req, res) => {
   }
 };
 
+// GET ALL STUDENTS
+export const getAllStudents = async (req, res) => {
+  try {
+    const students = await Student.find().populate("courses");
+
+    res.status(200).json({
+      message: "Students retrieved successfully",
+      count: students.length,
+      students
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to retrieve students",
+      error: error.message
+    });
+  }
+};
 
 // UPDATE STUDENT (PATCH)
 export const updateStudent = async (req, res) => {
@@ -164,6 +182,94 @@ export const addCourseToStudent = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Failed to add course to student",
+      error: error.message
+    });
+  }
+};
+
+// GET ALL COURSES FOR A SINGLE STUDENT
+export const getStudentCourses = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid student ID"
+      });
+    }
+
+    const student = await Student.findById(id).populate("courses");
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found"
+      });
+    }
+
+    res.status(200).json({
+      message: "Student courses retrieved successfully",
+      count: student.courses.length,
+      courses: student.courses
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to retrieve student courses",
+      error: error.message
+    });
+  }
+};
+
+// REMOVE COURSE FROM STUDENT
+export const removeCourseFromStudent = async (req, res) => {
+  try {
+    const { studentId, courseId } = req.params;
+
+    if (
+      !mongoose.Types.ObjectId.isValid(studentId) ||
+      !mongoose.Types.ObjectId.isValid(courseId)
+    ) {
+      return res.status(400).json({
+        message: "Invalid student ID or course ID"
+      });
+    }
+
+    const student = await Student.findById(studentId);
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found"
+      });
+    }
+
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({
+        message: "Course not found"
+      });
+    }
+
+    if (!student.courses.includes(courseId)) {
+      return res.status(400).json({
+        message: "Student is not registered for this course"
+      });
+    }
+
+    student.courses = student.courses.filter(
+      (id) => id.toString() !== courseId
+    );
+
+    await student.save();
+
+    res.status(200).json({
+      message: "Course removed from student successfully",
+      student
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to remove course from student",
       error: error.message
     });
   }
